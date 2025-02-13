@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gerenciador de Dívidas</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #f4f4f9;
+    }
+    header {
+      background-color: #4caf50;
+      color: white;
+      padding: 1rem;
+      text-align: center;
+    }
+    .container {
+      max-width: 800px;
+      margin: 1rem auto;
+      padding: 1rem;
+      background: white;
+      border-radius: 5px;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    }
+    h2 {
+      color: #333;
+    }
+    form {
+      margin-bottom: 1rem;
+    }
+    form input, form select, form button {
+      width: 100%;
+      padding: 0.8rem;
+      margin: 0.5rem 0;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+    .total {
+      font-weight: bold;
+      margin-top: 10px;
+    }
+    button.delete-btn {
+      background-color: #e74c3c;
+      color: white;
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    button.delete-btn:hover {
+      background-color: #c0392b;
+    }
+    .form-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+    #main-app-container {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Gerenciador de Dívidas</h1>
+  </header>
+  
+  <!-- Login Form -->
+  <div id="login-container" class="form-container">
+    <div class="container">
+      <h2>Login</h2>
+      <form id="login-form">
+        <input type="email" id="login-email" placeholder="Email" required>
+        <input type="password" id="login-password" placeholder="Senha" required>
+        <button type="submit">Entrar</button>
+      </form>
+      <p>Não tem uma conta? <a href="#" id="show-register">Cadastre-se</a></p>
+    </div>
+  </div>
+
+  <!-- Register Form -->
+  <div id="register-container" class="form-container" style="display: none;">
+    <div class="container">
+      <h2>Cadastro</h2>
+      <form id="register-form">
+        <input type="email" id="register-email" placeholder="Email" required>
+        <input type="password" id="register-password" placeholder="Senha" required>
+        <button type="submit">Cadastrar</button>
+      </form>
+      <p>Já tem uma conta? <a href="#" id="show-login">Faça login</a></p>
+    </div>
+  </div>
+
+  <!-- Main App Container (Gerenciador de Dívidas) -->
+  <div id="main-app-container">
+    <div class="container">
+      <h2>Adicionar Transação</h2>
+      <form id="transaction-form">
+        <input type="text" id="name" placeholder="Nome da pessoa" required>
+        <input type="number" id="amount" placeholder="Valor (R$)" required>
+        <select id="type" required>
+          <option value="" disabled selected>Selecione o tipo</option>
+          <option value="owed">Eu devo</option>
+          <option value="lent">Devem para mim</option>
+        </select>
+        <button type="submit">Adicionar</button>
+      </form>
+
+      <h2>Eu devo</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Nome</th>
+            <th>Valor</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody id="owed-list"></tbody>
+      </table>
+      <p class="total">Total: <span id="total-owed">R$ 0,00</span></p>
+
+      <h2>Devem para mim</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Nome</th>
+            <th>Valor</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody id="lent-list"></tbody>
+      </table>
+      <p class="total">Total: <span id="total-lent">R$ 0,00</span></p>
+    </div>
+  </div>
+
+  <script>
+    const loginContainer = document.getElementById("login-container");
+    const registerContainer = document.getElementById("register-container");
+    const mainAppContainer = document.getElementById("main-app-container");
+
+    const showRegister = document.getElementById("show-register");
+    const showLogin = document.getElementById("show-login");
+
+    // Check if user is already logged in
+    window.onload = function() {
+      const user = JSON.parse(localStorage.getItem("user"));
+      if (user) {
+        // User is logged in, show the main app
+        loginContainer.style.display = "none";
+        registerContainer.style.display = "none";
+        mainAppContainer.style.display = "block";
+        loadData();  // Carregar dados das transações se houver
+      } else {
+        // User is not logged in, show login screen
+        loginContainer.style.display = "block";
+        registerContainer.style.display = "none";
+        mainAppContainer.style.display = "none";
+      }
+    };
+
+    // Switch to register view
+    showRegister.addEventListener("click", () => {
+      loginContainer.style.display = "none";
+      registerContainer.style.display = "block";
+    });
+
+    // Switch to login view
+    showLogin.addEventListener("click", () => {
+      registerContainer.style.display = "none";
+      loginContainer.style.display = "block";
+    });
+
+    // Handle user registration
+    document.getElementById("register-form").addEventListener("submit", (e) => {
+      e.preventDefault();
+      const email = document.getElementById("register-email").value;
+      const password = document.getElementById("register-password").value;
+      
+      if (email && password) {
+        // Save the user info to localStorage
+        localStorage.setItem("user", JSON.stringify({ email, password }));
+        alert("Cadastro realizado com sucesso! Faça login.");
+        
+        // After successful registration, show the main app (Gerenciador de Dívidas)
+        registerContainer.style.display = "none";
+        mainAppContainer.style.display = "block";
+        loadData();  // Carregar os dados das transações, caso haja
+      } else {
+        alert("Por favor, preencha todos os campos!");
+      }
+    });
+
+    // Handle user login
+    document.getElementById("login-form").addEventListener("submit", (e) => {
+      e.preventDefault();
+      const email = document.getElementById("login-email").value;
+      const password = document.getElementById("login-password").value;
+
+      const user = JSON.parse(localStorage.getItem("user"));
+
+      if (user && user.email === email && user.password === password) {
+        alert("Login realizado com sucesso!");
+        loginContainer.style.display = "none";
+        mainAppContainer.style.display = "block";
+        loadData();  // Carregar os dados das transações, caso haja
+      } else {
+        alert("Email ou senha incorretos.");
+      }
+    });
+
+    // Carregar dados do localStorage
+    function loadData() {
+      const owedData = JSON.parse(localStorage.getItem("owed")) || [];
+      const lentData = JSON.parse(localStorage.getItem("lent")) || [];
+      
+      owedData.forEach(item => addTransaction(item, "owed"));
+      lentData.forEach(item => addTransaction(item, "lent"));
+      
+      updateTotals();
+    }
+
+    // Adicionar transação à lista
+    function addTransaction(item, type) {
+      const row = document.createElement("tr");
+      row.dataset.amount = item.amount;
+      row.innerHTML = `
+        <td>${item.name}</td>
+        <td>${item.amount}</td>
+        <td><button class="delete-btn">Excluir</button></td>
+      `;
+      
+      row.querySelector(".delete-btn").addEventListener("click", () => {
+        row.remove();
+        saveData();
+        updateTotals();
+      });
+      
+      if (type === "owed") {
+        document.getElementById("owed-list").appendChild(row);
+      } else {
+        document.getElementById("lent-list").appendChild(row);
+      }
+    }
+
+    // Atualizar totais
+    function updateTotals() {
+      let sumOwed = 0;
+      let sumLent = 0;
+      
+      document.querySelectorAll("#owed-list tr").forEach(row => {
+        sumOwed += parseFloat(row.dataset.amount);
+      });
+      
+      document.querySelectorAll("#lent-list tr").forEach(row => {
+        sumLent += parseFloat(row.dataset.amount);
+      });
+      
+      document.getElementById("total-owed").textContent = sumOwed;
+      document.getElementById("total-lent").textContent = sumLent;
+    }
+
+    // Salvar dados no localStorage
+    function saveData() {
+      const owedData = [];
+      const lentData = [];
+      
+      document.querySelectorAll("#owed-list tr").forEach(row => {
+        owedData.push({ name: row.cells[0].textContent, amount: parseFloat(row.dataset.amount) });
+      });
+      document.querySelectorAll("#lent-list tr").forEach(row => {
+        lentData.push({ name: row.cells[0].textContent, amount: parseFloat(row.dataset.amount) });
+      });
+
+      localStorage.setItem("owed", JSON.stringify(owedData));
+      localStorage.setItem("lent", JSON.stringify(lentData));
+    }
+  </script>
+</body>
+</html>
